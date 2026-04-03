@@ -35,6 +35,8 @@ define([
         this.isPainting = options.isPainting;
         this.year = options.year || undefined;
         this.year2 = options.year2 || undefined;
+        this.addedFrom = options.addedFrom != null ? options.addedFrom : undefined;
+        this.addedTo = options.addedTo != null ? options.addedTo : undefined;
 
         this.photosAll = [];
         this.mapObjects = { photos: {}, clusters: {} };
@@ -315,6 +317,18 @@ define([
         }
     };
 
+    MarkerManager.prototype.setAddedDateLimits = function (addedFrom, addedTo) {
+        const from = addedFrom != null ? addedFrom : undefined;
+        const to = addedTo != null ? addedTo : undefined;
+        if (from !== this.addedFrom || to !== this.addedTo) {
+            this.addedFrom = from;
+            this.addedTo = to;
+            this.clearState();
+            this.clearPhotos();
+            this.refreshDataByZoom(true);
+        }
+    };
+
     /**
      * Вызывается по событию начала изменения масштаба карты
      */
@@ -428,6 +442,8 @@ define([
                     year2: this.year2,
                     isPainting: this.isPainting,
                     localWork: localWork,
+                    addedFrom: this.addedFrom,
+                    addedTo: this.addedTo,
                 }
             ).then(function (data) {
                 // Данные устарели и должны быть отброшены,
@@ -580,6 +596,8 @@ define([
             year2: this.year2,
             isPainting: this.isPainting,
             localWork: localWork,
+            addedFrom: this.addedFrom,
+            addedTo: this.addedTo,
         }).then(function (data) {
             // Данные устарели и должны быть отброшены,
             // если текущий зум не равен запрашиваемомоу или текущий баунд уже успел выйти за пределы запрашиваемого

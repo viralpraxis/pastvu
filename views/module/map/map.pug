@@ -36,6 +36,16 @@
                     span.material-icons.my-location
                 .tltp.tltp-left.tltp-animate-opacity(id="mylocation" role="tooltip" style="white-space:nowrap" data-bind="text: (geolocationStatus() === 'denied' ? 'Определение местоположения запрещено браузером' : geolocationStatus() === 'error' ? 'Не удается определить местоположение' : 'Моё местоположение')")
         // /ko
+        //ko if: !embedded
+        .mapAddedDateSelector(data-bind="css: {addedDateSet: addedFrom() != null}")
+            .mapAddedDatePresets
+                button.mapAddedDateBtn(type="button", data-bind="click: function() { addedDatePreset('24h'); }, css: { active: addedDatePresetValue() === '24h' }") За 24 ч
+                button.mapAddedDateBtn(type="button", data-bind="click: function() { addedDatePreset('7d'); }, css: { active: addedDatePresetValue() === '7d' }") За неделю
+                button.mapAddedDateBtn(type="button", data-bind="click: function() { addedDatePreset('30d'); }, css: { active: addedDatePresetValue() === '30d' }") За месяц
+            span.tltp-wrap.mapAddedDateClear(data-bind="click: addedDateReset, visible: addedFrom() != null")
+                span.glyphicon.glyphicon-remove-circle
+                .tltp.tltp-right.tltp-animate-move(style="white-space:nowrap") Сбросить период добавления
+        // /ko
         .mapYearSelector
             .yearSlider
                 .ui-slider-handle.L

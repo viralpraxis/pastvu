@@ -340,8 +340,11 @@ export function getNewPhotosLimit(user) {
  * @param {object} data
  * @returns {object}
  */
+const mapBoundsPhotoFields = { _id: 0, cid: 1, geo: 1, file: 1, dir: 1, title: 1, year: 1, year2: 1 };
+const mapBoundsPhotoLimit = 3000;
+
 async function getBounds(data) {
-    const { geometry, year, year2, isPainting, localWork } = data;
+    const { geometry, year, year2, isPainting, localWork, addedFrom, addedTo } = data;
     const years = isPainting ? paintYears : photoYears;
 
     // Determine whether fetch by years needed
@@ -351,7 +354,20 @@ async function getBounds(data) {
     let clusters;
     let photos;
 
-    if (!localWork) {
+    if (_.isNumber(addedFrom) && _.isNumber(addedTo) && addedFrom <= addedTo) {
+        const criteria = {
+            s: status.PUBLIC,
+            type: isPainting ? constants.photo.type.PAINTING : constants.photo.type.PHOTO,
+            geo: { $geoWithin: { $geometry: geometry } },
+            sdate: { $gte: new Date(addedFrom), $lte: new Date(addedTo) },
+        };
+        if (hasYears) {
+            criteria.year = { $lte: year2 };
+            criteria.year2 = { $gte: year };
+        }
+        photos = await Photo.find(criteria, mapBoundsPhotoFields, { lean: true, limit: mapBoundsPhotoLimit }).exec();
+        clusters = [];
+    } else if (!localWork) {
         ({ photos, clusters } = await this.call(`cluster.${hasYears ? 'getBoundsByYear' : 'getBounds'}`, data));
     } else {
         const MapModel = isPainting ? PaintingMap : PhotoMap;
@@ -1588,6 +1604,7 @@ async function givePhotos({ filter, options: { skip = 0, limit = 40, random = fa
             s: buildQueryResult.s,
             y: buildQueryResult.y,
             c: buildQueryResult.c,
+            d: buildQueryResult.d,
             geo: filter.geo,
         },
     };
@@ -1615,7 +1632,7 @@ const givePublicNoGeoIndex = (function () {
     };
 }());
 
-const filterProps = { geo: [], r: [], rp: [], rs: [], re: [], s: [], t: [], y: [], c: [] };
+const filterProps = { geo: [], r: [], rp: [], rs: [], re: [], s: [], t: [], y: [], c: [], d: [] };
 const delimeterParam = '_';
 const delimeterVal = '!';
 export function parseFilter(filterString) {
@@ -1788,6 +1805,24 @@ export function parseFilter(filterString) {
                         if (active) {
                             result.c = c;
                         }
+                    }
+                }
+            } else if (filterParam === 'd') {
+                filterVal = filterVal.split(delimeterVal);
+
+                if (Array.isArray(filterVal) && filterVal.length === 2) {
+                    const parseDate = (val) => {
+                        const ms = Number(val);
+                        if (!Number.isNaN(ms) && ms >= 0 && ms < 1e15) {
+                            return ms;
+                        }
+                        const d = new Date(val);
+                        return Number.isNaN(d.getTime()) ? null : d.getTime();
+                    };
+                    const from = parseDate(filterVal[0]);
+                    const to = parseDate(filterVal[1]);
+                    if (from != null && to != null && from <= to) {
+                        result.d = [from, to];
                     }
                 }
             }
@@ -3142,6 +3177,14 @@ export function buildPhotosQuery(filter, forUserId, iAm, random) {
         query.year2 = { $gte: filter.y[0] };
 
         result.y = filter.y;
+    }
+
+    if (filter.d && filter.d.length === 2) {
+        query.sdate = {
+            $gte: new Date(filter.d[0]),
+            $lte: new Date(filter.d[1]),
+        };
+        result.d = filter.d;
     }
 
     if (filter.c) {

@@ -149,6 +149,17 @@
                                     = 'Есть от'
                                 = ' '
                                 input.form-control.ccount(type="text", data-bind="value: filter.disp.ccount, valueUpdate: 'keyup', event: {keydown: ccountArrow}, attr: {disabled:filter.disp.c.indexOf('1')<0}, css: {ccountSet: filter.disp.ccount()>1 && filter.disp.c.indexOf('1')>=0}", maxlength="4")
+                    .fRow
+                        .fName Добавлено на сайт:
+                        .fVars(data-bind="css: {addedDateSet: filter.disp.addedFrom() != null}")
+                            .btn-group.btn-group-sm(role="group")
+                                button.btn.btn-default(type="button", data-bind="click: function() { addedDatePreset('24h'); }, css: { active: filter.disp.addedDatePresetValue() === '24h' }") За 24 ч
+                                button.btn.btn-default(type="button", data-bind="click: function() { addedDatePreset('7d'); }, css: { active: filter.disp.addedDatePresetValue() === '7d' }") За неделю
+                                button.btn.btn-default(type="button", data-bind="click: function() { addedDatePreset('30d'); }, css: { active: filter.disp.addedDatePresetValue() === '30d' }") За месяц
+                            = ' '
+                            .tltp-wrap(data-bind="click: addedDateReset, visible: filter.disp.addedFrom() != null")
+                                span.glyphicon.glyphicon-remove-circle(style="top:2px; cursor:pointer")
+                                .tltp.tltp-right.tltp-animate-move(style="white-space:nowrap") Сбросить период добавления
                     .fRow.svars
                         .fName Статусы:
                         .fVars

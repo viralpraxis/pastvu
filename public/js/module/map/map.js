@@ -126,6 +126,12 @@ define([
                 !this.embedded && (Number(qParams.y2) || Utils.getLocalStorage('map.year2.' + type))
             );
 
+            const storedAddedFrom = !this.embedded && Utils.getLocalStorage('map.addedFrom');
+            const storedAddedTo = !this.embedded && Utils.getLocalStorage('map.addedTo');
+            this.addedFrom = ko.observable(storedAddedFrom != null ? Number(storedAddedFrom) : null);
+            this.addedTo = ko.observable(storedAddedTo != null ? Number(storedAddedTo) : null);
+            this.addedDatePresetValue = ko.observable(!this.embedded && Utils.getLocalStorage('map.addedDatePreset') || null);
+
             this.yearRefreshMarkersBind = this.yearRefreshMarkers.bind(this);
             this.yearRefreshMarkersTimeout = null;
 
@@ -407,6 +413,22 @@ define([
                 } else {
                     Utils.removeLocalStorage('map.year2.' + type);
                 }
+                const addedFrom = this.addedFrom();
+                const addedTo = this.addedTo();
+                const preset = this.addedDatePresetValue();
+                if (addedFrom != null && addedTo != null) {
+                    Utils.setLocalStorage('map.addedFrom', addedFrom);
+                    Utils.setLocalStorage('map.addedTo', addedTo);
+                    if (preset) {
+                        Utils.setLocalStorage('map.addedDatePreset', preset);
+                    } else {
+                        Utils.removeLocalStorage('map.addedDatePreset');
+                    }
+                } else {
+                    Utils.removeLocalStorage('map.addedFrom');
+                    Utils.removeLocalStorage('map.addedTo');
+                    Utils.removeLocalStorage('map.addedDatePreset');
+                }
             }
         },
         setYears: function (y, y2) {
@@ -530,6 +552,8 @@ define([
                 embedded: this.embedded,
                 year: this.yearLow,
                 year2: this.yearHigh,
+                addedFrom: this.addedFrom(),
+                addedTo: this.addedTo(),
             });
             this.selectLayer(system, type);
 
@@ -581,12 +605,42 @@ define([
                     this.yearSliderCreate();
                     this.setLocalState();
 
+                    this.subscriptions.addedFrom = this.addedFrom.subscribe(this.addedDateChange, this);
+                    this.subscriptions.addedTo = this.addedTo.subscribe(this.addedDateChange, this);
+
                     globalVM.func.showContainer(this.$container);
 
                     setTimeout(this.readyPromiseResolve, 100);
                 }, this);
 
             this.showing = true;
+        },
+        addedDateChange: function () {
+            if (this.markerManager) {
+                this.markerManager.setAddedDateLimits(this.addedFrom(), this.addedTo());
+            }
+            this.setLocalState();
+        },
+        addedDatePreset: function (preset) {
+            const now = Date.now();
+            let from;
+            if (preset === '24h') {
+                from = now - 24 * 60 * 60 * 1000;
+            } else if (preset === '7d') {
+                from = now - 7 * 24 * 60 * 60 * 1000;
+            } else if (preset === '30d') {
+                from = now - 30 * 24 * 60 * 60 * 1000;
+            } else {
+                return;
+            }
+            this.addedDatePresetValue(preset);
+            this.addedFrom(from);
+            this.addedTo(now);
+        },
+        addedDateReset: function () {
+            this.addedDatePresetValue(null);
+            this.addedFrom(null);
+            this.addedTo(null);
         },
         hide: function () {
             globalVM.func.hideContainer(this.$container);

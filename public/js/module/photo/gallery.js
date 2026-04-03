@@ -77,6 +77,9 @@ define([
                     geo: ko.observableArray(),
                     year: ko.observable(this.year),
                     year2: ko.observable(this.year2),
+                    addedFrom: ko.observable(null),
+                    addedTo: ko.observable(null),
+                    addedDatePresetValue: ko.observable(null),
                 },
                 active: ko.observable(true),
                 inactivateString: '',
@@ -243,6 +246,8 @@ define([
             this.subscriptions.filter_disp_y = this.filter.disp.year.subscribe(_.debounce(this.yearHandle, 800), this);
             this.subscriptions.filter_disp_y2 = this.filter.disp.year2.subscribe(_.debounce(this.year2Handle, 800), this);
             this.subscriptions.filter_disp_ccount = this.filter.disp.ccount.subscribe(_.debounce(this.ccountHandle, 800), this);
+            this.subscriptions.filter_disp_addedFrom = this.filter.disp.addedFrom.subscribe(_.debounce(this.addedDateHandle, 300), this);
+            this.subscriptions.filter_disp_addedTo = this.filter.disp.addedTo.subscribe(_.debounce(this.addedDateHandle, 300), this);
             this.subscriptions.filter_active = this.filter.active.subscribe(this.filterActiveChange, this);
             this.filterChangeHandleBlock = false;
 
@@ -499,6 +504,12 @@ define([
                 if (_.includes(c, 1)) {
                     filterString += '!' + (ccount > 1 ? ccount : 1);
                 }
+            }
+
+            const addedFrom = this.filter.disp.addedFrom();
+            const addedTo = this.filter.disp.addedTo();
+            if (addedFrom != null && addedTo != null && addedFrom <= addedTo) {
+                filterString += (filterString ? '_' : '') + 'd!' + addedFrom + '!' + addedTo;
             }
 
             return filterString;
@@ -996,6 +1007,36 @@ define([
 
             this.filterChangeHandle();
         },
+        addedDatePreset: function (preset) {
+            const now = Date.now();
+            let from;
+            if (preset === '24h') {
+                from = now - 24 * 60 * 60 * 1000;
+            } else if (preset === '7d') {
+                from = now - 7 * 24 * 60 * 60 * 1000;
+            } else if (preset === '30d') {
+                from = now - 30 * 24 * 60 * 60 * 1000;
+            } else {
+                return;
+            }
+            this.filter.disp.addedDatePresetValue(preset);
+            this.filter.disp.addedFrom(from);
+            this.filter.disp.addedTo(now);
+            this.filterChangeHandle();
+        },
+        addedDateReset: function () {
+            this.filter.disp.addedDatePresetValue(null);
+            this.filter.disp.addedFrom(null);
+            this.filter.disp.addedTo(null);
+            this.filterChangeHandle();
+        },
+        addedDateHandle: function () {
+            const from = this.filter.disp.addedFrom();
+            const to = this.filter.disp.addedTo();
+            if (from != null && to != null && from <= to) {
+                this.filterChangeHandle();
+            }
+        },
         fcclick: function (data, event) {
             const currC = data.filter.disp.c();
             const clicked = event.target.value;
@@ -1299,6 +1340,26 @@ define([
                         }
 
                         this.filter.disp.c(c.map(String));
+
+                        if (data.filter.d && data.filter.d.length === 2) {
+                            this.filter.disp.addedFrom(data.filter.d[0]);
+                            this.filter.disp.addedTo(data.filter.d[1]);
+                            const span = data.filter.d[1] - data.filter.d[0];
+                            const day = 24 * 60 * 60 * 1000;
+                            if (span >= day * 29 && span <= day * 31) {
+                                this.filter.disp.addedDatePresetValue('30d');
+                            } else if (span >= day * 6 && span <= day * 8) {
+                                this.filter.disp.addedDatePresetValue('7d');
+                            } else if (span >= day * 23 / 24 && span <= day * 25 / 24) {
+                                this.filter.disp.addedDatePresetValue('24h');
+                            } else {
+                                this.filter.disp.addedDatePresetValue(null);
+                            }
+                        } else {
+                            this.filter.disp.addedFrom(null);
+                            this.filter.disp.addedTo(null);
+                            this.filter.disp.addedDatePresetValue(null);
+                        }
 
                         this.filterChangeHandleBlock = false;
                     }
